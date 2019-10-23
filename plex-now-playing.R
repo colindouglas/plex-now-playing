@@ -24,8 +24,8 @@ token <- tryCatch({
 }, error = function(x) NULL)
 
 if (!length(token) | token$authed_at < Sys.Date()) {
-  
   credentials <- read_csv(credential_path, col_names = FALSE)
+  
   token_response <- content(
     POST(
       url = "https://plex.tv/users/sign_in.json", 
@@ -52,7 +52,6 @@ if (!length(token) | token$authed_at < Sys.Date()) {
 }
 
 token <- token$authToken
-
 
 now_playing <- content(GET("http://127.0.0.1:32400/status/sessions", add_headers("X-Plex-Token" = token)))
 
