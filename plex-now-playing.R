@@ -1,12 +1,19 @@
 # Set working directory (ending with /) where it can save tokens, find credentials.
 # NOTE: Password will be saved in plaintext in this folder! Choose somewhere secure.
 wkdir <- "~/Scripts/"
-# It should contain a file called ".plex_creds" that is your Plex username and password, separated by a comma
 
-############ To automatically write the .plex_creds file, modify and uncomment the following lines
-############ This only needs to be done once, then lines can be re-commented afterwards 
-# write.table(data.frame("username" = "John_k_User", "password" = "hunter2"), 
-#   file = paste0(wkdir, ".plex_creds"), col.names = FALSE, row.names = FALSE, sep = ",")
+# Set the path to the credentials and the auth token
+credential_path <- paste0(wkdir, ".plex_creds")
+token_path <- paste0(wkdir, ".plex_token")
+
+# To automatically write the .plex_creds file, uncomment and modify the following lines 
+# if (!(file.exists(credential_path))) {
+#   write.table(data.frame("username" = "John_k_User", 
+#                          "password" = "hunter2"),
+#               file = paste0(wkdir, ".plex_creds"), 
+#               col.names = FALSE, row.names = FALSE, sep = ",")
+# }
+# The above lines can be commented out after the first run
 
 # Load the necessary packages
 packages <- c("dplyr", "tibble", "httr", "readr", "tidyr", "stringr")
@@ -15,14 +22,14 @@ if (!all(unlist(lapply(packages, require, character.only = TRUE)))) {
   lapply(packages, require, character.only = TRUE)
 }
 
-# Set the path to the credentials and the auth token
-credential_path <- paste0(wkdir, ".plex_creds")
-token_path <- paste0(wkdir, ".plex_token")
+# Check if there's a token written and read it in
+if (file.exists(token_path)) {
+  token <- read_csv(token_path)
+} else {
+  token <- NULL
+}
 
-token <- tryCatch({
-  read_csv(token_path)
-}, error = function(x) NULL)
-
+# If there's no token or the token is more than a day old, re-auth with plex.tv and get a new token
 if (!length(token) | token$authed_at < Sys.Date()) {
   credentials <- read_csv(credential_path, col_names = FALSE)
   
@@ -47,14 +54,16 @@ if (!length(token) | token$authed_at < Sys.Date()) {
     select(-subscription, -roles) %>% 
     add_column(authed_at = Sys.Date())
   
-  write_csv(tr_df, path = token_path) 
+  write_csv(token, path = token_path) 
   
 }
 
 token <- token$authToken
 
+# Get data on the current streams from the local Plex server
 now_playing <- content(GET("http://127.0.0.1:32400/status/sessions", add_headers("X-Plex-Token" = token)))
 
+# Check if something is playing, and if it is, print some data about the streams
 if (!is.null(now_playing$MediaContainer$Metadata)) {
   np_nested <- tibble(metadata = now_playing$MediaContainer$Metadata) %>%
     unnest_wider(metadata) %>%
