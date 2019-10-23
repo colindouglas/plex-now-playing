@@ -1,5 +1,3 @@
-library(dplyr)
-
 # Set working directory (ending with /) where it can save tokens, find credentials.
 # NOTE: Password will be saved in plaintext in this folder! Choose somewhere secure.
 wkdir <- "~/Scripts/"
@@ -10,6 +8,14 @@ wkdir <- "~/Scripts/"
 # write.table(data.frame("username" = "John_k_User", "password" = "hunter2"), 
 #   file = paste0(wkdir, ".plex_creds"), col.names = FALSE, row.names = FALSE, sep = ",")
 
+# Load the necessary packages
+packages <- c("dplyr", "tibble", "httr", "readr", "tidyr")
+if (!all(unlist(lapply(packages, require, character.only = TRUE)))) {
+  install.packages(packages)
+  lapply(packages, require, character.only = TRUE)
+}
+
+# Set the path to the credentials and the auth token
 credential_path <- paste0(wkdir, ".plex_creds")
 token_path <- paste0(wkdir, ".plex_token")
 
@@ -35,16 +41,18 @@ if (!length(token) | token$authed_at < Sys.Date()) {
     quit(status = 1)
   }
 
-  tr_df <- token_response %>% 
+  token <- token_response %>% 
     tibble::tibble(object = .) %>% 
     tidyr::unnest_wider(object) %>%
     dplyr::select(-subscription, -roles) %>% 
     tibble::add_column(authed_at = Sys.Date())
   
-  readr::write_csv(tr_df, path = token_path) 
+  write_csv(tr_df, path = token_path) 
+  
 }
 
 token <- token$authToken
+
 
 now_playing <- httr::content(httr::GET("http://127.0.0.1:32400/status/sessions", httr::add_headers("X-Plex-Token" = token)))
 
