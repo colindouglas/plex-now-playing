@@ -36,7 +36,7 @@ for i, stream in enumerate(streams_xml):
     df['property'] = df.index
     df['stream'] = i+1
     df.columns = ['value', 'field', 'stream']
-    stream_df = streams_long.append(df, ignore_index=True)
+    streams_long = streams_long.append(df, ignore_index=True)
 
 
 streams = streams_long.pivot(index='stream', values='value', columns='field')
