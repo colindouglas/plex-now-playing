@@ -1,33 +1,36 @@
-# Python version
-# Work in process!
 from getpass import getpass
 from xml.etree import ElementTree as ET
 from datetime import datetime
-
 import json
+import csv
 import os
-import pandas as pd
 import requests
 import keyring
+import re
 
-# Set working directory (ending with /) where it can save tokens, find credentials.
-wkdir = '~/Scripts/'
+WORKING_DIR = '~/Scripts/'              # working directory (ending with /) where script saves tokens
+PLEX_SERVER = 'http://127.0.0.1:32400'  # Address of Plex server to query
+USERNAME = ''                           # Plex username to login, only required on first run
 
 # The location of the file that stores Plex token
-token_path = os.path.expanduser(wkdir) + ".plex_token_py"
+token_path = os.path.expanduser(WORKING_DIR) + ".plex_token_py"
 
 # Read in Plex token, update it if it's older than 1 day
 if os.path.exists(token_path):
-    token_save = pd.read_csv(token_path, header=None)
-    token = token_save[1][1]
-    last_token_update = datetime.strptime(token_save[1][2], "%Y-%m-%d %H:%M:%S.%f")
-    time_since_update = datetime.now() - last_token_update
-    update_token = time_since_update.days >= 1
+    with open(token_path) as token_file:
+        token_dict = next(csv.DictReader(token_file))
+    token = token_dict.get('token')
+    username = token_dict.get('username')
+    token_last_update = datetime.strptime(token_dict.get('last_update'), "%Y-%m-%d %H:%M:%S.%f")
+    since_last_update = datetime.now() - token_last_update
+    update_token = since_last_update.days >= 1
 else:
     update_token = True
+    username = False
 
 if update_token:
-    username = input("Enter Plex username")
+    if not username:
+        username = USERNAME
     password = keyring.get_password("Plex-Now-Playing", username)
     if password is None:
         password = getpass()
@@ -42,35 +45,50 @@ if update_token:
             "X-Plex-Version": "0.0.1"}
     )
     token = json.loads(token_request.text)['user']['authToken']
-    token_save = {
+    token_data = {
         "username": plex_creds[0],
         "token": token,
         "last_update": datetime.now()
     }
-    pd.DataFrame.from_dict(data=token_save, orient='index').to_csv(token_path, header=False)
+    with open(token_path, 'w') as token_file:
+        writer = csv.DictWriter(token_file, token_data.keys())
+        writer.writeheader()
+        writer.writerow(token_data)
 
+# Ask the local Plex server for the current sessions
 now_playing = requests.get(
-    url="http://127.0.0.1:32400/status/sessions",
+    url=PLEX_SERVER + "/status/sessions",
     headers={"X-Plex-Token": token}
 )
 
+# Parse the XML returned by Plex
 streams_xml = ET.fromstring(now_playing.text)
 
-# Create long-style dataframe of stream data
-streams_long = pd.DataFrame(columns=['value', 'field', 'stream'])
-for i, stream in enumerate(streams_xml):
-    df = pd.DataFrame.from_dict(stream.attrib, orient='index')
-    df['property'] = df.index
-    df['stream'] = i
-    df.columns = ['value', 'field', 'stream']
-    streams_long = streams_long.append(df, ignore_index=True)
-
-# Pivot df so it is rowwise by stream
-streams = streams_long.pivot(index='stream', values='value', columns='field')
-
-if not len(streams):
-    print("Nothing playing")
+stream = streams_xml[1]
+if len(streams_xml):
+    # For each stream, print an informative line about the stream
+    for i, stream in enumerate(streams_xml):
+        stream_number = i + 1
+        episode_name = stream.get('title')
+        series_name = ' '.join(stream.get('grandparentTitle').split(' ')[:5])  # Only first five words
+        user_full = stream.find('User').get('title')
+        try:
+            user = re.search('[^@]+', user_full).group(0)  # Truncate emails before @
+        except AttributeError:
+            user = user_full
+        start_time = stream.get('lastViewedAt', default=datetime.now())  # If there's no LastViewedAt, use current time
+        episode = 'E' + stream.get('index', default=None)
+        try:
+            season_string = stream.get('parentTitle', default="")
+            season = "S" + re.search('[0-9]+', season_string).group(0)
+        except AttributeError:
+            season = ''
+        if type(start_time) is str:
+            start_time = datetime.fromtimestamp(int(start_time))
+        print(start_time.strftime("%b %d, %I:%M") + ": "
+              + user + " // "
+              + series_name + " -",
+              season + episode + " - " +
+              episode_name)
 else:
-    streams = streams.assign(pretty_string=streams.parentTitle + streams.titleSort,
-                             second_argument="butt")
-    print(streams['second_argument'])
+    print("Nothing playing")
