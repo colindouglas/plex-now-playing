@@ -85,7 +85,12 @@ if (!is.null(now_playing$MediaContainer$Metadata)) {
     time <- as.numeric(df$time[row]) %>% 
       as.POSIXct(origin = "1970-01-01", tz = Sys.timezone()) %>% 
       format("%b %d, %I:%M%P")
-    paste0(time, ": ", df$user[row], " // ", df$series[row], " - ", df$episode[row], " - ", df$ep_name[row])
+    paste0(time, ": ", 
+           substr(df$user[row], start = 1, stop = 12), " // ", 
+           substr(df$series[row], start = 1, stop = 20), " - ", 
+           substr(df$episode[row], start = 1, stop = 20), " - ", 
+           substr(df$ep_name[row], start = 1, stop = 20)
+    )
   }
   
   for (i in 1:nrow(current)) {
