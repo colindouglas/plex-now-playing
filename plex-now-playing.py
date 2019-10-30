@@ -64,30 +64,68 @@ now_playing = requests.get(
 # Parse the XML returned by Plex
 streams_xml = ET.fromstring(now_playing.text)
 
+
+def parse_stream_time(stream):
+    start_time = stream.get('lastViewedAt', default=datetime.now())  # If there's no LastViewedAt, use current time
+    if type(start_time) is str:
+        start_time = datetime.fromtimestamp(int(start_time))
+    return start_time.strftime('%b %d, %I:%M')
+
+
+def parse_stream_user(stream):
+    user_full = stream.find('User').get('title', default='Unknown User')
+    try:
+        user = re.search('[^@]+', user_full).group(0)  # Truncate emails before @
+    except AttributeError:
+        user = user_full
+    return user
+
+
 if len(streams_xml):
     # For each stream, print an informative line about the stream
     for stream in streams_xml:
-        episode_name = stream.get('title', default='Unknown Episode')
-        series_name_long = stream.get('grandparentTitle', default='Unknown Series')
-        series_name = ' '.join(series_name_long.split(' ')[:5])  # Only first five words
-        user_full = stream.find('User').get('title', default='Unknown User')
-        try:
-            user = re.search('[^@]+', user_full).group(0)  # Truncate emails before @
-        except AttributeError:
-            user = user_full
-        start_time = stream.get('lastViewedAt', default=datetime.now())  # If there's no LastViewedAt, use current time
-        episode = 'E' + stream.get('index', default='')
-        try:
-            season_string = stream.get('parentTitle', default='')
-            season = "S" + re.search('[0-9]+', season_string).group(0)
-        except AttributeError:
-            season = ''
-        if type(start_time) is str:
-            start_time = datetime.fromtimestamp(int(start_time))
-        print(start_time.strftime('%b %d, %I:%M') + ': ' +
-              user + " // " +
-              series_name + " - " +
-              season + episode + " - " +
-              episode_name)
+        # How to display TV show episodes
+        if stream.get('type') == 'episode':
+            episode_name = stream.get('title', default='Unknown Episode')
+            series_name_long = stream.get('grandparentTitle', default='Unknown Series')
+            series_name = ' '.join(series_name_long.split(' ')[:5])  # Only first five words
+            episode = 'E' + stream.get('index', default='')
+            start_time = parse_stream_time(stream)
+            user = parse_stream_user(stream)
+            try:
+                season_string = stream.get('parentTitle', default='')
+                season = "S" + re.search('[0-9]+', season_string).group(0)
+            except AttributeError:
+                season = ''
+            print(start_time + ': ' + user + " // " +
+                  series_name + " - " + season + episode + " - " + episode_name
+                  )
+        # How to display Movies
+        elif stream.get('type') == 'movie':
+            movie_title = stream.get('title', default='Unknown Movie')
+            movie_year = stream.get('originallyAvailableAt').split('-')[0]
+            start_time = parse_stream_time(stream)
+            user = parse_stream_user(stream)
+            print(start_time + ': ' + user + " // " +
+                  movie_title + " (" + movie_year + ")"
+                  )
+        elif stream.get('type') == 'track':
+            track_title = stream.get('title', default='Unknown Song')
+            track_artist = stream.get('grandparentTitle')
+            # track_album = stream.get('parentTitle')
+            start_time = parse_stream_time(stream)
+            user = parse_stream_user(stream)
+            print(start_time + ': ' + user + " // " +
+                  track_artist + " - " + track_title
+                  )
+        else:
+            start_time = parse_stream_time(stream)
+            user = parse_stream_user(stream)
+            print(start_time + ': ' + user + " // " +
+                  "Unknown Stream"
+                  )
+
 else:
     print('Nothing playing')
+
+streams_xml[0].get('type')
