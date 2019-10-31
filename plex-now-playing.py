@@ -11,7 +11,7 @@ import re
 WORKING_DIR = '~/Scripts/'              # Working directory (ending with /) where script saves tokens
 PLEX_SERVER = 'http://127.0.0.1:32400'  # Address of Plex server to query
 USERNAME = ''                           # Plex username to login, only required on first run
-PASSWORD = ''                           # Plex password to login, only required on first run
+PASSWORD = ''                           # Plex password to login, after first run, stored in keyring
 
 # The location of the file that stores Plex token
 token_path = os.path.expanduser(WORKING_DIR) + '.plextoken'
@@ -65,19 +65,19 @@ if token:
 # Parse the XML returned by Plex
 streams_xml = ET.fromstring(now_playing.text)
 
-
+# Return either the time a transcoded started _or_ the current time as a string 
 def parse_stream_time(stream):
     start_time = stream.get('lastViewedAt', default=datetime.now())  # If there's no LastViewedAt, use current time
     if type(start_time) is str:
         start_time = int(start_time)
         start_time = datetime.fromtimestamp(start_time)
-    return start_time.strftime('%b %d, %I:%M')
+    return start_time.strftime('%b %d, %I:%M')  # Mon 01, HH:MM
 
-
+# Return the user watching the stream. Truncate emails before @
 def parse_stream_user(stream):
     user_full = stream.find('User').get('title', default='Unknown User')
     try:
-        user = re.search('[^@]+', user_full).group(0)  # Truncate emails before @
+        user = re.search('[^@]+', user_full).group(0)
     except AttributeError:
         user = user_full
     return user
@@ -87,6 +87,7 @@ if len(streams_xml):
     # For each stream, print an informative line about the stream
     for stream in streams_xml:
         # How to display TV show episodes
+        # Date: User // Series - S0E00 - Episode 
         if stream.get('type') == 'episode':
             episode_name = stream.get('title', default='Unknown Episode')
             series_name_long = stream.get('grandparentTitle', default='Unknown Series')
@@ -104,6 +105,7 @@ if len(streams_xml):
                 series_name + " - " + season + episode + " - " + episode_name
             )
         # How to display Movies
+        # Date: User // Movie Title (YEAR)
         elif stream.get('type') == 'movie':
             movie_title = stream.get('title', default='Unknown Movie')
             movie_year = stream.get('originallyAvailableAt').split('-')[0]
@@ -114,6 +116,7 @@ if len(streams_xml):
                 movie_title + " (" + movie_year + ")"
                 )
         # How to display Music tracks
+        # Date: User // Arist - Track
         elif stream.get('type') == 'track':
             track_title = stream.get('title', default='Unknown Song')
             track_artist = stream.get('grandparentTitle', default='Unknown Artist')
