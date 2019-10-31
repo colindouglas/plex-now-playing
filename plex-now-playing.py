@@ -1,12 +1,12 @@
-from getpass import getpass
-from xml.etree import ElementTree as ET
-from datetime import datetime
+import os
 import json
 import csv
-import os
 import requests
-import keyring
 import re
+from datetime import datetime
+from getpass import getpass
+from xml.etree import ElementTree as ET
+import keyring
 
 WORKING_DIR = '~/Scripts/'              # Working directory (ending with /) where script saves tokens
 PLEX_SERVER = 'http://127.0.0.1:32400'  # Address of Plex server to query
@@ -83,7 +83,7 @@ def parse_stream_user(stream):
     return user
 
 
-if len(streams_xml):
+if len(streams_xml):  # Is len() here necessary?
     # For each stream, print an informative line about the stream
     for stream in streams_xml:
         # How to display TV show episodes
