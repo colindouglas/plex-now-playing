@@ -4,11 +4,10 @@ import csv
 import requests
 import re
 from datetime import datetime
-from getpass import getpass
 from xml.etree import ElementTree as ET
 import keyring
 
-WORKING_DIR = '~/Scripts/'              # Working directory (ending with /) where script saves tokens
+WORKING_DIR = '~/Scripts/'  # Working directory (ending with /) where script saves tokens
 PLEX_SERVER = 'http://127.0.0.1:32400'  # Address of Plex server to query
 USERNAME = ''                           # Plex username to login, only required on first run
 PASSWORD = ''                           # Plex password to login, after first run, stored in keyring
@@ -61,78 +60,64 @@ if token:
         url=PLEX_SERVER + '/status/sessions',
         headers={'X-Plex-Token': token}
     )
+    streams_xml = ET.fromstring(now_playing.text)  # Parse the XML returned by Plex
 
-# Parse the XML returned by Plex
-streams_xml = ET.fromstring(now_playing.text)
-
-# Return either the time a transcoded started _or_ the current time as a string 
-def parse_stream_time(stream):
-    start_time = stream.get('lastViewedAt', default=datetime.now())  # If there's no LastViewedAt, use current time
-    if type(start_time) is str:
-        start_time = int(start_time)
-        start_time = datetime.fromtimestamp(start_time)
-    return start_time.strftime('%b %d, %I:%M')  # Mon 01, HH:MM
-
-# Return the user watching the stream. Truncate emails before @
-def parse_stream_user(stream):
-    user_full = stream.find('User').get('title', default='Unknown User')
-    try:
-        user = re.search('[^@]+', user_full).group(0)
-    except AttributeError:
-        user = user_full
-    return user
-
-
-if len(streams_xml):  # Is len() here necessary?
-    # For each stream, print an informative line about the stream
+# For each stream, print an informative line about the stream
+if streams_xml:  # Is len() here necessary?
     for stream in streams_xml:
+
+        # Return the user watching the stream. Truncate emails before @
+        user_full = stream.find('User').get('title', default='Unknown User')
+        try:
+            user = re.search('[^@]+', user_full).group(0)
+        except AttributeError:
+            user = user_full
+
+        # Return either the time a transcode started _or_ the current time as a string
+        start_time = stream.get('lastViewedAt', default=datetime.now())
+        start_time = datetime.fromtimestamp(int(start_time))
+        start_time = start_time.strftime('%b %d, %I:%M')  # Mon 01, HH:MM
+
         # How to display TV show episodes
-        # Date: User // Series - S0E00 - Episode 
+        # Date: User // Series - S0E00 - Episode
         if stream.get('type') == 'episode':
             episode_name = stream.get('title', default='Unknown Episode')
             series_name_long = stream.get('grandparentTitle', default='Unknown Series')
             series_name = ' '.join(series_name_long.split(' ')[:5])  # Only first five words
             episode = 'E' + stream.get('index', default='')
-            start_time = parse_stream_time(stream)
-            user = parse_stream_user(stream)
             try:
                 season_string = stream.get('parentTitle', default='')
                 season = "S" + re.search('[0-9]+', season_string).group(0)
             except AttributeError:
                 season = ''
-            print(
-                start_time + ': ' + user + " // " +
-                series_name + " - " + season + episode + " - " + episode_name
+            display_string = (
+                    start_time + ': ' + user + " // " +
+                    series_name + " - " + season + episode + " - " + episode_name
             )
         # How to display Movies
         # Date: User // Movie Title (YEAR)
         elif stream.get('type') == 'movie':
             movie_title = stream.get('title', default='Unknown Movie')
             movie_year = stream.get('originallyAvailableAt').split('-')[0]
-            start_time = parse_stream_time(stream)
-            user = parse_stream_user(stream)
-            print(
+            display_string = (
                 start_time + ': ' + user + " // " +
                 movie_title + " (" + movie_year + ")"
-                )
+            )
         # How to display Music tracks
-        # Date: User // Arist - Track
+        # Date: User // Artist - Track
         elif stream.get('type') == 'track':
             track_title = stream.get('title', default='Unknown Song')
             track_artist = stream.get('grandparentTitle', default='Unknown Artist')
             # track_album = stream.get('parentTitle', default='Unknown Album')
-            start_time = parse_stream_time(stream)
-            user = parse_stream_user(stream)
-            print(
+            display_string = (
                 start_time + ': ' + user + " // " +
                 track_artist + " - " + track_title
-                )
+            )
         else:
-            start_time = parse_stream_time(stream)
-            user = parse_stream_user(stream)
-            print(start_time + ': ' + user + " // " +
-                  "Unknown Stream"
-                  )
-
+            display_string = (
+                start_time + ': ' + user + " // " +
+                "Unknown Stream"
+            )
+    print(display_string[:75])  # Truncate display at 75 characters
 else:
     print('Nothing playing')
