@@ -64,7 +64,7 @@ if token:
     streams_xml = ET.fromstring(now_playing.text)  # Parse the XML returned by Plex
 
 # For each stream, print an informative line about the stream
-if streams_xml:  # Is len() here necessary?
+if len(streams_xml):  # Is len() here necessary?
     for stream in streams_xml:
 
         # Return the user watching the stream. Truncate emails before @
@@ -76,7 +76,7 @@ if streams_xml:  # Is len() here necessary?
 
         # Return either the time a transcode started _or_ the current time as a string
         start_time = stream.get('lastViewedAt', default=datetime.now())
-        if start_time is str:
+        if type(start_time) is str:
             start_time = datetime.fromtimestamp(int(start_time))
         start_time = start_time.strftime('%b %d, %I:%M')  # Mon 01, HH:MM
 
