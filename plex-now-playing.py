@@ -7,7 +7,7 @@ from datetime import datetime
 from xml.etree import ElementTree as ET
 import keyring
 
-WORKING_DIR = '~/Scripts/'  # Working directory (ending with /) where script saves tokens
+WORKING_DIR = '~/scripts/'  # Working directory (ending with /) where script saves tokens
 PLEX_SERVER = 'http://127.0.0.1:32400'  # Address of Plex server to query
 USERNAME = ''                           # Plex username to login, only required on first run
 PASSWORD = ''                           # Plex password to login, after first run, stored in keyring
@@ -78,7 +78,7 @@ if len(streams_xml):  # Is len() here necessary?
         start_time = stream.get('lastViewedAt', default=datetime.now())
         if type(start_time) is str:
             start_time = datetime.fromtimestamp(int(start_time))
-        start_time = start_time.strftime('%b %d, %I:%M')  # Mon 01, HH:MM
+        start_time = start_time.strftime('%b %d, %H:%M')  # Mon 01, HH:MM
 
         # How to display TV show episodes
         # Date: User // Series - S0E00 - Episode
@@ -120,6 +120,6 @@ if len(streams_xml):  # Is len() here necessary?
                 start_time + ': ' + user + " // " +
                 "Unknown Stream"
             )
-    print(display_string[:75])  # Truncate display at 75 characters
+        print(display_string[:75])  # Truncate display at 75 characters
 else:
     print('Nothing playing')
