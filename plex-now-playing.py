@@ -47,7 +47,7 @@ if not token:
             'last_update': datetime.now()
         }
         with open(token_path, 'w') as token_file:
-            token_file.write('{0},{1}'.format(username, password))
+            token_file.write('{0},{1}'.format(username, token))
 
     else:
         print('Authentication problem')
