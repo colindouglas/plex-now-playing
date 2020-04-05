@@ -6,6 +6,7 @@ from datetime import datetime
 from xml.etree import ElementTree as ET
 import keyring
 
+VERSION = "0.1.0"
 WORKING_DIR = '~/scripts/'  # Working directory (ending with /) where script saves tokens
 PLEX_SERVER = 'http://127.0.0.1:32400'  # Address of Plex server to query
 USERNAME = ''  # Plex username to login, only required on first run
@@ -32,11 +33,12 @@ if not token:
     keyring.set_password('Plex-Now-Playing', username, password)
     token_request = requests.post(
         url='https://plex.tv/users/sign_in.json',
-        data='user%5Blogin%5D={0}&user%5Bpassword%5D={1}'.format(username, password),
+        data='user%5Blogin%5D={u}&user%5Bpassword%5D={p}'.format(u=username, p=password),
         headers={
             'X-Plex-Client-Identifier': 'Plex-Now-Playing',
             'X-Plex-Product': 'Plex-Now-Playing',
-            'X-Plex-Version': '0.0.1'}
+            'X-Plex-Version': VERSION
+        }
     )
     if token_request.status_code < 300:
         token = json.loads(token_request.text)['user']['authToken']
