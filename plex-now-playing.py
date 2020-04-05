@@ -18,9 +18,8 @@ token_path = os.path.expanduser(WORKING_DIR) + '.plextoken'
 token = None
 username = None
 if os.path.exists(token_path):
-    with open(token_path) as token_file:
-        token = token_file.readline().split(',')
-    username, token = token
+    with open(token_path) as file:
+        username, token = file.readline().split(',')
     token_last_update = os.path.getmtime(token_path)
     token_last_update = datetime.fromtimestamp(token_last_update)
     if (datetime.now() - token_last_update).days >= 1:
@@ -33,7 +32,7 @@ if not token:
     keyring.set_password('Plex-Now-Playing', username, password)
     token_request = requests.post(
         url='https://plex.tv/users/sign_in.json',
-        data='user%5Blogin%5D=' + username + '&user%5Bpassword%5D=' + password,
+        data='user%5Blogin%5D={0}&user%5Bpassword%5D={1}'.format(username, password),
         headers={
             'X-Plex-Client-Identifier': 'Plex-Now-Playing',
             'X-Plex-Product': 'Plex-Now-Playing',
@@ -41,24 +40,18 @@ if not token:
     )
     if token_request.status_code < 300:
         token = json.loads(token_request.text)['user']['authToken']
-        token_data = {
-            'username': username,
-            'token': token,
-            'last_update': datetime.now()
-        }
-        with open(token_path, 'w') as token_file:
-            token_file.write('{0},{1}'.format(username, token))
-
+        with open(token_path, 'w') as file:
+            file.write('{0},{1}'.format(username, token))
     else:
         print('Authentication problem')
+        exit()
 
 # Ask the local Plex server for the current sessions
-if token:
-    now_playing = requests.get(
+now_playing = requests.get(
         url=PLEX_SERVER + '/status/sessions',
         headers={'X-Plex-Token': token}
     )
-    streams_xml = ET.fromstring(now_playing.text)  # Parse the XML returned by Plex
+streams_xml = ET.fromstring(now_playing.text)  # Parse the XML returned by Plex
 
 # For each stream, print an informative line about the stream
 if len(streams_xml):  # Is len() here necessary?
