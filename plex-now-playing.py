@@ -71,7 +71,7 @@ if len(streams_xml):  # Is len() here necessary?
         start_time = stream.get('lastViewedAt', default=datetime.now())
         if type(start_time) is str:
             start_time = datetime.fromtimestamp(int(start_time))
-        start_time = start_time.strftime('%b %d, %H:%M')  # Mon 01, HH:MM
+        start_time = start_time.strftime('%a %H:%M')  # Mon HH:MM
 
         # The regex returns None if there's no match, None.group() is AttributeError
         season = re.search('[0-9]+', str(stream.get('parentTitle')))
@@ -84,10 +84,10 @@ if len(streams_xml):  # Is len() here necessary?
 
         # Define how each type of stream is displayed
         stream_formats = dict()
-        stream_formats['episode'] = '{start}: {user} // {series} - S{season}E{episode} - {tv_name}'
-        stream_formats['movie'] = '{start}: {user} // {movie_title} ({year})'
-        stream_formats['track'] = '{start}: {user} // {track_artist} - {track_title}'
-        stream_formats.setdefault('{start}: {user} // Unknown Stream')
+        stream_formats['episode'] = '{start}, {user} // {series} - S{season}E{episode} - {tv_name}'
+        stream_formats['movie'] = '{start}, {user} // {movie_title} ({year})'
+        stream_formats['track'] = '{start}, {user} // {track_artist} - {track_title}'
+        stream_formats.setdefault('{start}, {user} // Unknown Stream')
 
         # Apply formatting to stream data
         display_str = stream_formats[stream.get('type')].format(
@@ -104,6 +104,6 @@ if len(streams_xml):  # Is len() here necessary?
             track_album=stream.get('parentTitle', default='Unknown Album'),
         )
 
-        print(display_str[:75])  # Truncate display at 75 characters
+        print("  " + display_str[:75])  # Truncate display at 75 characters
 else:
     print('Nothing playing')
