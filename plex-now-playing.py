@@ -106,4 +106,4 @@ if len(streams_xml):  # Is len() here necessary?
 
         print("  " + display_str[:75])  # Truncate display at 75 characters
 else:
-    print('Nothing playing')
+    print('Nothing')
